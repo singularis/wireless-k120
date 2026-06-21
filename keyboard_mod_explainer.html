@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sleeper Wireless: Inside the DIY ESP32-S3 Keyboard Mod</title>
+    <meta name="description" content="An interactive technical explainer on converting a wired Logitech K120 keyboard into a wireless Bluetooth keyboard using the ESP32-S3.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(20, 28, 47, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --accent-purple: #9d4edd;
+            --accent-blue: #3a86c8;
+            --accent-cyan: #06d6a0;
+            --text-main: #f8f9fa;
+            --text-muted: #94a3b8;
+            --glow-color: rgba(157, 78, 221, 0.4);
+            --font-outfit: 'Outfit', sans-serif;
+            --font-mono: 'Fira Code', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(157, 78, 221, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(58, 134, 200, 0.15) 0px, transparent 50%);
+            color: var(--text-main);
+            font-family: var(--font-outfit);
+            min-height: 100vh;
+            padding: 2rem 1rem;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        /* Header section with glow effect */
+        header {
+            text-align: center;
+            margin-bottom: 4rem;
+            position: relative;
+        }
+
+        header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text-main) 30%, var(--accent-purple) 70%, var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.05em;
+            margin-bottom: 1rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            max-width: 600px;
+            margin: 0 auto;
+            font-weight: 300;
+        }
+
+        /* Glassmorphism Cards */
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 2.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            margin-bottom: 2.5rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(157, 78, 221, 0.3);
+            box-shadow: 0 12px 40px 0 rgba(157, 78, 221, 0.1);
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-title::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 24px;
+            background: linear-gradient(to bottom, var(--accent-purple), var(--accent-blue));
+            border-radius: 4px;
+        }
+
+        /* Interactive Diagram Container */
+        .diagram-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            align-items: center;
+            margin: 3rem 0;
+        }
+
+        /* Flex row for steps */
+        .flow-steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            position: relative;
+            padding: 0 1rem;
+            flex-wrap: wrap;
+            gap: 2rem 1rem;
+        }
+
+        /* Connector line running behind steps */
+        .flow-line {
+            position: absolute;
+            top: 50%;
+            left: 5%;
+            width: 90%;
+            height: 4px;
+            background: linear-gradient(to right, var(--accent-purple), var(--accent-blue), var(--accent-cyan));
+            z-index: 1;
+            transform: translateY(-50%);
+            border-radius: 2px;
+            opacity: 0.3;
+        }
+
+        .step-node {
+            background: #141c2f;
+            border: 2px solid var(--card-border);
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 2;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        }
+
+        .step-node:hover, .step-node.active {
+            border-color: var(--accent-purple);
+            transform: scale(1.15);
+            box-shadow: 0 0 20px var(--glow-color);
+        }
+
+        .step-node.active {
+            background: linear-gradient(135deg, #24143f 0%, #0b0f19 100%);
+        }
+
+        .step-node svg {
+            width: 32px;
+            height: 32px;
+            fill: var(--text-muted);
+            transition: fill 0.3s ease;
+        }
+
+        .step-node:hover svg, .step-node.active svg {
+            fill: var(--accent-cyan);
+        }
+
+        .step-label {
+            position: absolute;
+            bottom: -30px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            white-space: nowrap;
+            color: var(--text-muted);
+            transition: color 0.3s ease;
+        }
+
+        .step-node.active .step-label {
+            color: var(--text-main);
+        }
+
+        /* Responsive Flow Display Panel */
+        .detail-panel {
+            width: 100%;
+            min-height: 200px;
+            background: rgba(11, 15, 25, 0.8);
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+            padding: 2rem;
+            margin-top: 2rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .detail-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent-purple);
+        }
+
+        .detail-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .detail-description {
+            color: var(--text-main);
+            font-weight: 300;
+            font-size: 1.05rem;
+        }
+
+        .detail-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: rgba(157, 78, 221, 0.2);
+            border: 1px solid var(--accent-purple);
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            color: var(--accent-purple);
+            margin-bottom: 1rem;
+        }
+
+        /* Pinout Diagram Styles */
+        .wiring-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .wiring-grid {
+                grid-template-columns: 1fr;
+            }
+            .flow-line {
+                display: none;
+            }
+            .flow-steps {
+                flex-direction: column;
+                align-items: center;
+            }
+            .step-label {
+                position: relative;
+                bottom: 0;
+                margin-top: 0.5rem;
+            }
+            .step-node {
+                width: 100%;
+                border-radius: 12px;
+                height: auto;
+                padding: 1rem;
+                flex-direction: row;
+                justify-content: flex-start;
+                gap: 1.5rem;
+            }
+        }
+
+        .wiring-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        .wiring-table th, .wiring-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .wiring-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .wiring-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .color-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+        }
+
+        .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Solder/Firmware Tabs */
+        .code-box {
+            background: #060911;
+            border-radius: 12px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-top: 1rem;
+        }
+
+        .code-box pre {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            color: #a9b1d6;
+        }
+
+        .keyword { color: #bb9af7; }
+        .type { color: #0db9d7; }
+        .string { color: #9ece6a; }
+        .comment { color: #565f89; font-style: italic; }
+
+        /* Animation */
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 5px rgba(6, 214, 160, 0.2); }
+            50% { box-shadow: 0 0 20px rgba(6, 214, 160, 0.6); }
+            100% { box-shadow: 0 0 5px rgba(6, 214, 160, 0.2); }
+        }
+
+        .signal-pulse {
+            animation: pulseGlow 2s infinite;
+        }
+
+        /* Footer styling */
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--card-border);
+            margin-top: 4rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Sleeper Wireless</h1>
+        <p>Inside the USB-to-Bluetooth conversion of a wired Logitech K120 keyboard powered by the ESP32-S3 microcontroller.</p>
+    </header>
+
+    <!-- Section 1: The Interactive Flow -->
+    <main class="glass-card">
+        <h2 class="section-title" id="flow-title">How the Signal Travels</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Click on any step below to trace how a physical keystroke on your K120 keyboard transforms into a wireless Bluetooth signal received by your computer.</p>
+        
+        <div class="diagram-container">
+            <div class="flow-steps">
+                <div class="flow-line"></div>
+                
+                <div class="step-node active" id="node-keypress" onclick="showStep('keypress')">
+                    <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    <span class="step-label">1. Keypress</span>
+                </div>
+                
+                <div class="step-node" id="node-usbhost" onclick="showStep('usbhost')">
+                    <svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H7M19 9H5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    <span class="step-label">2. USB Host</span>
+                </div>
+                
+                <div class="step-node" id="node-translate" onclick="showStep('translate')">
+                    <svg viewBox="0 0 24 24"><path d="M8 7h12M8 12h8M8 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    <span class="step-label">3. BLE Translate</span>
+                </div>
+                
+                <div class="step-node" id="node-rf" onclick="showStep('rf')">
+                    <svg viewBox="0 0 24 24"><path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 2v2M12 20v2M20 12h2M2 12h2" stroke="currentColor" stroke-width="2"/></svg>
+                    <span class="step-label">4. RF Antenna</span>
+                </div>
+                
+                <div class="step-node" id="node-pc" onclick="showStep('pc')">
+                    <svg viewBox="0 0 24 24"><path d="M4 6h16v10H4zM2 20h20M12 16v4" stroke="currentColor" stroke-width="2"/></svg>
+                    <span class="step-label">5. PC Input</span>
+                </div>
+            </div>
+
+            <!-- Panel displaying info about the selected step -->
+            <div class="detail-panel" id="detail-panel">
+                <div class="detail-badge" id="detail-layer">HARDWARE LAYER (KEYBOARD)</div>
+                <h3 class="detail-title" id="detail-title">
+                    1. Physical Keypress on the Logitech K120
+                </h3>
+                <p class="detail-description" id="detail-desc">
+                    When you press a key (e.g., the 'A' key), the mechanical dome matrix underneath the keycap closes an electrical circuit. The internal standard USB controller chip inside the K120 detects this contact and packages the event into a standard USB HID report containing the keyboard key scan code.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Section 2: Wiring Configuration -->
+    <div class="glass-card">
+        <h2 class="section-title" id="wiring-title">Internal Wiring Layout</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">To fit the components inside the keyboard casing, you cut the main K120 USB cable and solder the wires directly to the ESP32-S3 Zero microcontroller pins.</p>
+        
+        <div class="wiring-grid">
+            <div>
+                <table class="wiring-table" id="wiring-table">
+                    <thead>
+                        <tr>
+                            <th>K120 Cable Color</th>
+                            <th>Function</th>
+                            <th>ESP32-S3 Zero Pin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="color-pill"><span class="color-dot" style="background-color: #ef233c;"></span>Red</span></td>
+                            <td>VCC (5V Power)</td>
+                            <td>5V Output (from Boost Converter)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="color-pill"><span class="color-dot" style="background-color: #ffffff;"></span>White</span></td>
+                            <td>USB D- (Data Negative)</td>
+                            <td>GPIO 19 (Native USB D-)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="color-pill"><span class="color-dot" style="background-color: #38b000;"></span>Green</span></td>
+                            <td>USB D+ (Data Positive)</td>
+                            <td>GPIO 20 (Native USB D+)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="color-pill"><span class="color-dot" style="background-color: #000000;"></span>Black</span></td>
+                            <td>GND (Ground)</td>
+                            <td>GND</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; justify-content: center; background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--card-border);">
+                <h4 style="margin-bottom: 0.5rem; color: var(--accent-cyan);">💡 Technical Tip: S3 USB-OTG</h4>
+                <p style="font-size: 0.95rem; color: var(--text-muted);">
+                    Unlike normal microcontrollers, the **ESP32-S3** contains physical hardware pins (GPIO 19 and 20) wired directly to a built-in USB-OTG PHY. This lets the chip act as a <strong>USB Host</strong> directly, reading raw keyboard data streams without needing an external USB host controller chip.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Code Structure -->
+    <div class="glass-card">
+        <h2 class="section-title" id="code-title">Core Firmware logic</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1rem;">The ESP32-S3 firmware runs a concurrent loop: reading the USB host packets from GPIO 19/20, translating the keys, and broadcasting them out via the Bluetooth stack.</p>
+        
+        <div class="code-box">
+            <pre><code><span class="comment">// Standard configuration code for ESP32S3 USB Host to BLE translation</span>
+<span class="keyword">#include</span> <span class="string">&lt;usb/usb_host.h&gt;</span>
+<span class="keyword">#include</span> <span class="string">&lt;BleKeyboard.h&gt;</span>
+
+<span class="type">BleKeyboard</span> bleKeyboard(<span class="string">"Sleeper K120"</span>, <span class="string">"Custom DIY"</span>);
+
+<span class="keyword">void</span> <span class="type">setup</span>() {
+  <span class="type">Serial</span>.begin(<span class="string">115200</span>);
+  bleKeyboard.begin(); <span class="comment">// Start Bluetooth Low Energy HID Keyboard stack</span>
+  
+  <span class="comment">// Initialize standard USB Host driver on GPIO 19 (D-) and 20 (D+)</span>
+  usb_host_config_t host_config = { .skip_phy_setup = <span class="keyword">false</span> };
+  usb_host_install(&amp;host_config);
+}
+
+<span class="keyword">void</span> <span class="type">loop</span>() {
+  <span class="keyword">if</span> (bleKeyboard.isConnected()) {
+    <span class="comment">// Read raw HID report packets from the USB Host controller</span>
+    <span class="type">usb_transfer_t</span>* transfer = get_usb_keyboard_report();
+    <span class="keyword">if</span> (transfer) {
+      <span class="comment">// Translate scan codes and send directly over BLE</span>
+      bleKeyboard.write(translate_scan_code(transfer-&gt;data));
+    }
+  }
+}</code></pre>
+        </div>
+    </div>
+
+    <footer>
+        <p>Built for the Logitech K120 Wireless Mod Project &copy; 2026. Made with standard web design practices.</p>
+    </footer>
+</div>
+
+<script>
+    const steps = {
+        keypress: {
+            layer: "HARDWARE LAYER (KEYBOARD)",
+            title: "1. Physical Keypress on the Logitech K120",
+            desc: "When you press a key (e.g., the 'A' key), the mechanical dome matrix underneath the keycap closes an electrical circuit. The internal standard USB controller chip inside the K120 detects this contact and packages the event into a standard USB HID report containing the keyboard key scan code."
+        },
+        usbhost: {
+            layer: "HARDWARE LAYER (MICROCONTROLLER)",
+            title: "2. ESP32-S3 USB Host Reading (GPIO 19/20)",
+            desc: "Because the ESP32-S3 features a built-in USB-OTG PHY, it acts as a USB Host to the K120. It powers the keyboard with 5V from the boost converter, and continuously polls GPIO 19 (D-) and GPIO 20 (D+) for data changes, pulling the raw HID scan codes from the keyboard's buffer."
+        },
+        translate: {
+            layer: "SOFTWARE LAYER (FIRMWARE)",
+            title: "3. Scan Code Translation to BLE Packet",
+            desc: "The ESP32-S3 firmware receives the USB scan code report. It translates these codes into standard keypress instructions and formats a brand new Bluetooth Low Energy (BLE) HID report. The BLE Keyboard library structures this data packet perfectly according to international Bluetooth guidelines."
+        },
+        rf: {
+            layer: "RF TRANSCEIVER LAYER (ANTENNA)",
+            title: "4. Radio Modulation & Wireless Broadcast",
+            desc: "The ESP32-S3's internal 2.4 GHz RF radio transceiver converts the digital Bluetooth packet into electromagnetic waves. It feeds this high-frequency current directly into the PCB trace antenna on the ESP32-S3 Zero board, broadcasting the signals wirelessly into the room."
+        },
+        pc: {
+            layer: "PC / OPERATING SYSTEM LAYER",
+            title: "5. Host PC Demodulation & Input Injection",
+            desc: "Your computer's Bluetooth receiver captures the 2.4 GHz radio wave signal, decodes the modulated wave back into standard bytes, and reads the BLE HID keyboard report. The operating system handles this byte sequence exactly like it would from a direct USB connection, outputting 'A' on your screen."
+        }
+    };
+
+    function showStep(stepKey) {
+        // Toggle active node styles
+        document.querySelectorAll('.step-node').forEach(node => {
+            node.classList.remove('active');
+        });
+        
+        const activeNode = document.getElementById(`node-${stepKey}`);
+        if(activeNode) activeNode.classList.add('active');
+
+        // Update explanation content with transition
+        const panel = document.getElementById('detail-panel');
+        const layer = document.getElementById('detail-layer');
+        const title = document.getElementById('detail-title');
+        const desc = document.getElementById('detail-desc');
+
+        panel.style.opacity = 0;
+        panel.style.transform = 'translateY(5px)';
+
+        setTimeout(() => {
+            layer.innerText = steps[stepKey].layer;
+            title.innerText = steps[stepKey].title;
+            desc.innerText = steps[stepKey].desc;
+            
+            panel.style.opacity = 1;
+            panel.style.transform = 'translateY(0)';
+        }, 200);
+    }
+</script>
+
+</body>
+</html>

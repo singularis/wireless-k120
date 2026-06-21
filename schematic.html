@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wireless K120 — Circuit Schematic</title>
+    <meta name="description" content="Professional circuit schematic for the Logitech K120 wireless Bluetooth keyboard mod using ESP32-S3 Zero.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fafbfc;
+            --grid-color: #e8ecf0;
+            --wire-color: #1a2744;
+            --wire-width: 2;
+            --component-fill: #ffffff;
+            --component-stroke: #1a2744;
+            --component-stroke-width: 2;
+            --label-color: #1a2744;
+            --pin-color: #4a6fa5;
+            --power-color: #c0392b;
+            --gnd-color: #2c3e50;
+            --data-color: #2980b9;
+            --signal-color: #27ae60;
+            --highlight-color: #e74c3c;
+            --module-fill: #f0f4f8;
+            --module-header: #2c3e50;
+            --charge-color: #e67e22;
+            --font-mono: 'Fira Code', monospace;
+            --font-sans: 'Outfit', sans-serif;
+            --annotation-color: #7f8c8d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            font-family: var(--font-sans);
+            color: var(--label-color);
+            overflow: auto;
+        }
+
+        .page-container {
+            max-width: 1500px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .title-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 3px solid var(--component-stroke);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .title-bar h1 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        .title-bar .meta {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--annotation-color);
+            text-align: right;
+            line-height: 1.6;
+        }
+
+        .schematic-wrapper {
+            background: white;
+            border: 2px solid var(--component-stroke);
+            border-radius: 4px;
+            overflow: auto;
+            position: relative;
+        }
+
+        svg text {
+            font-family: var(--font-mono);
+        }
+
+        .legend-bar {
+            display: flex;
+            gap: 2rem;
+            padding: 1rem 0;
+            flex-wrap: wrap;
+            font-size: 0.85rem;
+            font-family: var(--font-mono);
+            border-top: 1px solid var(--grid-color);
+            margin-top: 1rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .legend-line {
+            width: 30px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .legend-line-dashed {
+            width: 30px;
+            height: 0;
+            border-top: 3px dashed;
+        }
+
+        .title-block {
+            border: 2px solid var(--component-stroke);
+            padding: 0.75rem 1.25rem;
+            display: grid;
+            grid-template-columns: auto auto;
+            gap: 0.25rem 2rem;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .title-block dt {
+            color: var(--annotation-color);
+            font-weight: 500;
+        }
+
+        .title-block dd {
+            font-weight: 600;
+        }
+
+        .zoom-controls {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            gap: 0.5rem;
+            z-index: 100;
+        }
+
+        .zoom-btn {
+            width: 44px;
+            height: 44px;
+            border: 2px solid var(--component-stroke);
+            background: white;
+            border-radius: 8px;
+            font-size: 1.4rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            transition: background 0.15s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+
+        .zoom-btn:hover { background: #f0f4f8; }
+
+        @media print {
+            .zoom-controls { display: none; }
+            body { background: white; }
+            .page-container { padding: 0; max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-container">
+    <div class="title-bar">
+        <h1>Wireless K120 — Circuit Schematic (UPS Power Architecture)</h1>
+        <div class="meta">
+            REV 2.0 — June 2026<br>
+            Sheet 1 of 1
+        </div>
+    </div>
+
+    <div class="schematic-wrapper">
+        <svg id="schematic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900" width="1400" height="900">
+            <!-- Background Grid -->
+            <defs>
+                <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#eef1f5" stroke-width="0.5"/>
+                </pattern>
+                <pattern id="grid-major" width="100" height="100" patternUnits="userSpaceOnUse">
+                    <rect width="100" height="100" fill="url(#grid)"/>
+                    <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#dde3ea" stroke-width="0.8"/>
+                </pattern>
+                <!-- Junction dot -->
+                <circle id="junction" r="4" fill="#1a2744"/>
+                <!-- Ground symbol -->
+                <g id="gnd-sym">
+                    <line x1="0" y1="0" x2="0" y2="8" stroke="#2c3e50" stroke-width="2"/>
+                    <line x1="-10" y1="8" x2="10" y2="8" stroke="#2c3e50" stroke-width="2"/>
+                    <line x1="-6" y1="12" x2="6" y2="12" stroke="#2c3e50" stroke-width="2"/>
+                    <line x1="-2" y1="16" x2="2" y2="16" stroke="#2c3e50" stroke-width="2"/>
+                </g>
+                <!-- Power flag -->
+                <g id="pwr-flag">
+                    <line x1="0" y1="0" x2="0" y2="-10" stroke="#c0392b" stroke-width="2"/>
+                    <polygon points="-6,-10 6,-10 0,-20" fill="#c0392b" stroke="none"/>
+                </g>
+                <!-- Switch symbol -->
+                <g id="switch-sym">
+                    <circle cx="0" cy="0" r="3" fill="none" stroke="#1a2744" stroke-width="2"/>
+                    <circle cx="30" cy="0" r="3" fill="none" stroke="#1a2744" stroke-width="2"/>
+                    <line x1="3" y1="0" x2="28" y2="-10" stroke="#1a2744" stroke-width="2"/>
+                </g>
+                <!-- Battery symbol -->
+                <g id="battery-sym">
+                    <line x1="-8" y1="-12" x2="-8" y2="12" stroke="#1a2744" stroke-width="4"/>
+                    <line x1="4" y1="-7" x2="4" y2="7" stroke="#1a2744" stroke-width="2"/>
+                    <text x="-14" y="-16" font-size="9" fill="var(--gnd-color)" font-weight="600">−</text>
+                    <text x="1" y="-10" font-size="9" fill="var(--power-color)" font-weight="600">+</text>
+                </g>
+                <!-- Arrow marker -->
+                <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#c0392b"/>
+                </marker>
+                <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#e67e22"/>
+                </marker>
+                <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#2980b9"/>
+                </marker>
+                <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#27ae60"/>
+                </marker>
+            </defs>
+            <rect width="1400" height="900" fill="url(#grid-major)"/>
+
+            <!-- ================================================================ -->
+            <!-- SECTION LABELS                                                    -->
+            <!-- ================================================================ -->
+            <text x="30" y="30" font-size="11" fill="#95a5a6" font-weight="500">POWER SECTION (UPS DESIGN)</text>
+            <text x="620" y="30" font-size="11" fill="#95a5a6" font-weight="500">DATA SECTION</text>
+            <text x="1080" y="30" font-size="11" fill="#95a5a6" font-weight="500">PERIPHERAL</text>
+            <line x1="600" y1="40" x2="600" y2="840" stroke="#eef1f5" stroke-width="1" stroke-dasharray="8,4"/>
+            <line x1="1060" y1="40" x2="1060" y2="840" stroke="#eef1f5" stroke-width="1" stroke-dasharray="8,4"/>
+
+            <!-- ================================================================ -->
+            <!-- UPS ANNOTATION BOX                                               -->
+            <!-- ================================================================ -->
+            <rect x="30" y="44" width="260" height="50" rx="4" fill="#fff3e0" stroke="#e67e22" stroke-width="1.5"/>
+            <text x="160" y="63" text-anchor="middle" font-size="10" fill="#e65100" font-weight="600">⚡ UPS POWER ARCHITECTURE</text>
+            <text x="160" y="78" text-anchor="middle" font-size="8" fill="#bf360c">Battery ALWAYS powers system.</text>
+            <text x="160" y="88" text-anchor="middle" font-size="8" fill="#bf360c">USB-C only charges — never powers directly.</text>
+
+            <!-- ================================================================ -->
+            <!-- BT1: LiPo Battery (Central Power Source)                         -->
+            <!-- ================================================================ -->
+            <rect x="60" y="260" width="160" height="100" rx="6" fill="#fff8e1" stroke="var(--component-stroke)" stroke-width="2.5"/>
+            <!-- Battery plates -->
+            <line x1="115" y1="290" x2="115" y2="330" stroke="var(--component-stroke)" stroke-width="5"/>
+            <line x1="133" y1="296" x2="133" y2="324" stroke="var(--component-stroke)" stroke-width="2.5"/>
+            <text x="100" y="290" font-size="9" fill="var(--gnd-color)" font-weight="700">−</text>
+            <text x="138" y="290" font-size="9" fill="var(--power-color)" font-weight="700">+</text>
+            <text x="140" y="350" text-anchor="middle" font-size="10" fill="var(--label-color)" font-weight="600">BT1</text>
+            <text x="140" y="256" text-anchor="middle" font-size="9" fill="var(--annotation-color)" font-weight="500">LiPo 3.7V 500mAh</text>
+            <text x="140" y="268" text-anchor="middle" font-size="8" fill="var(--annotation-color)">801350</text>
+
+            <!-- Battery BAT+ right exit -->
+            <line x1="220" y1="295" x2="260" y2="295" stroke="var(--power-color)" stroke-width="2"/>
+            <text x="225" y="288" font-size="8" fill="var(--power-color)" font-weight="600">BAT+</text>
+
+            <!-- Battery BAT- bottom exit -->
+            <line x1="100" y1="360" x2="100" y2="800" stroke="var(--gnd-color)" stroke-width="2"/>
+            <text x="84" y="378" font-size="8" fill="var(--gnd-color)" font-weight="500">BAT−</text>
+
+            <!-- ================================================================ -->
+            <!-- SW1: Kill Switch (SPST) — On Battery Positive Line               -->
+            <!-- ================================================================ -->
+            <text x="310" y="276" text-anchor="middle" font-size="9" fill="var(--label-color)" font-weight="600">SW1: KILL SWITCH</text>
+            <text x="310" y="264" text-anchor="middle" font-size="8" fill="var(--annotation-color)">SPST (hidden underside)</text>
+            <use href="#switch-sym" x="295" y="295"/>
+            <line x1="260" y1="295" x2="295" y2="295" stroke="var(--power-color)" stroke-width="2"/>
+            <line x1="325" y1="295" x2="370" y2="295" stroke="var(--power-color)" stroke-width="2"/>
+            <!-- Label on wire -->
+            <text x="340" y="312" font-size="7" fill="var(--annotation-color)">VBAT 3.7V</text>
+
+            <!-- ================================================================ -->
+            <!-- Junction: Battery splits to MT3608 and TP4056                    -->
+            <!-- ================================================================ -->
+            <use href="#junction" x="370" y="295"/>
+            <!-- Line up to MT3608 -->
+            <line x1="370" y1="295" x2="370" y2="170" stroke="var(--power-color)" stroke-width="2"/>
+            <!-- Line down to TP4056 -->
+            <line x1="370" y1="295" x2="370" y2="460" stroke="var(--power-color)" stroke-width="2"/>
+
+            <!-- ================================================================ -->
+            <!-- U3: MT3608 Boost Converter (ALWAYS ON — Main Power Path)         -->
+            <!-- ================================================================ -->
+            <rect x="180" y="120" width="200" height="110" rx="4" fill="var(--module-fill)" stroke="var(--component-stroke)" stroke-width="2.5"/>
+            <rect x="180" y="120" width="200" height="28" rx="4" fill="#27ae60"/>
+            <rect x="180" y="144" width="200" height="4" fill="#27ae60"/>
+            <text x="280" y="141" text-anchor="middle" font-size="11" fill="white" font-weight="600">U3: MT3608 BOOST</text>
+            <text x="280" y="217" text-anchor="middle" font-size="8" fill="var(--annotation-color)">⚡ ALWAYS ON — main power path</text>
+
+            <!-- MT3608 pins -->
+            <line x1="370" y1="170" x2="380" y2="170" stroke="var(--power-color)" stroke-width="2"/>
+            <line x1="380" y1="170" x2="380" y2="180" stroke="var(--power-color)" stroke-width="2"/>
+            <text x="360" y="186" font-size="10" fill="var(--pin-color)" font-weight="500" text-anchor="end">VIN</text>
+            <line x1="370" y1="180" x2="380" y2="180" stroke="var(--power-color)" stroke-width="2"/>
+
+            <!-- VIN label -->
+            <text x="395" y="186" font-size="9" fill="var(--power-color)" font-weight="600">3.7V</text>
+
+            <!-- GND (left) -->
+            <line x1="140" y1="196" x2="180" y2="196" stroke="var(--gnd-color)" stroke-width="2"/>
+            <text x="190" y="200" font-size="10" fill="var(--pin-color)" font-weight="500">GND</text>
+
+            <!-- VOUT (left) — goes to 5V rail -->
+            <line x1="140" y1="170" x2="180" y2="170" stroke="var(--power-color)" stroke-width="2"/>
+            <text x="190" y="174" font-size="10" fill="var(--pin-color)" font-weight="500">VOUT</text>
+            <text x="120" y="174" font-size="9" fill="var(--power-color)" font-weight="600">5V</text>
+
+            <!-- MT3608 GND to bus -->
+            <line x1="140" y1="196" x2="100" y2="196" stroke="var(--gnd-color)" stroke-width="2"/>
+            <line x1="100" y1="196" x2="100" y2="360" stroke="var(--gnd-color)" stroke-width="2"/>
+
+            <!-- ================================================================ -->
+            <!-- 5V RAIL (from MT3608 output — ALWAYS ON)                         -->
+            <!-- ================================================================ -->
+            <!-- Main 5V rail horizontal line -->
+            <line x1="140" y1="170" x2="60" y2="170" stroke="var(--power-color)" stroke-width="2.5"/>
+            <line x1="60" y1="170" x2="60" y2="100" stroke="var(--power-color)" stroke-width="2.5"/>
+            <line x1="60" y1="100" x2="1040" y2="100" stroke="var(--power-color)" stroke-width="2.5"/>
+            <use href="#pwr-flag" x="550" y="100"/>
+            <text x="550" y="90" text-anchor="middle" font-size="11" fill="var(--power-color)" font-weight="700">+5V RAIL (from MT3608 — ALWAYS ON)</text>
+
+            <!-- 5V rail → K120 VCC -->
+            <line x1="1040" y1="100" x2="1040" y2="250" stroke="var(--power-color)" stroke-width="2"/>
+            <use href="#junction" x="1040" y="100"/>
+
+            <!-- 5V rail → ESP32-S3 5V pin -->
+            <line x1="540" y1="100" x2="540" y2="340" stroke="var(--power-color)" stroke-width="2"/>
+            <use href="#junction" x="540" y="100"/>
+            <text x="546" y="220" font-size="8" fill="var(--power-color)" font-weight="500" transform="rotate(90, 546, 220)">5V to ESP32-S3</text>
+
+            <!-- ================================================================ -->
+            <!-- U1: ESP32-S3 Zero                                                -->
+            <!-- ================================================================ -->
+            <rect x="620" y="200" width="260" height="380" rx="4" fill="var(--module-fill)" stroke="var(--component-stroke)" stroke-width="2.5"/>
+            <rect x="620" y="200" width="260" height="32" rx="4" fill="var(--module-header)"/>
+            <rect x="620" y="228" width="260" height="4" fill="var(--module-header)"/>
+            <text x="750" y="222" text-anchor="middle" font-size="13" fill="white" font-weight="600">U1: ESP32-S3 ZERO</text>
+
+            <!-- Left pins -->
+            <!-- 5V -->
+            <line x1="540" y1="340" x2="620" y2="340" stroke="var(--power-color)" stroke-width="2"/>
+            <text x="632" y="344" font-size="10" fill="var(--pin-color)" font-weight="500">5V (from MT3608)</text>
+
+            <!-- GND -->
+            <line x1="580" y1="380" x2="620" y2="380" stroke="var(--gnd-color)" stroke-width="2"/>
+            <text x="632" y="384" font-size="10" fill="var(--pin-color)" font-weight="500">GND</text>
+
+            <!-- GPIO 19 (USB D-) -->
+            <line x1="580" y1="280" x2="620" y2="280" stroke="var(--data-color)" stroke-width="2"/>
+            <text x="632" y="284" font-size="10" fill="var(--pin-color)" font-weight="500">GPIO 19 (USB D−)</text>
+
+            <!-- GPIO 20 (USB D+) -->
+            <line x1="580" y1="310" x2="620" y2="310" stroke="var(--data-color)" stroke-width="2"/>
+            <text x="632" y="314" font-size="10" fill="var(--pin-color)" font-weight="500">GPIO 20 (USB D+)</text>
+
+            <!-- GPIO 4 (Wake) -->
+            <line x1="580" y1="440" x2="620" y2="440" stroke="var(--signal-color)" stroke-width="2"/>
+            <text x="632" y="444" font-size="10" fill="var(--pin-color)" font-weight="500">GPIO 4 (WAKE)</text>
+
+            <!-- Internal labels -->
+            <text x="750" y="506" text-anchor="middle" font-size="9" fill="var(--annotation-color)">USB Host (GPIO 19/20)</text>
+            <text x="750" y="520" text-anchor="middle" font-size="9" fill="var(--annotation-color)">BLE HID Keyboard</text>
+            <text x="750" y="534" text-anchor="middle" font-size="9" fill="var(--annotation-color)">USB HID Device (USB-C)</text>
+            <text x="750" y="560" text-anchor="middle" font-size="8" fill="var(--signal-color)">3.3V: Internal LDO (isolated)</text>
+
+            <!-- Right side: USB-C connector -->
+            <rect x="880" y="320" width="120" height="100" rx="4" fill="white" stroke="var(--component-stroke)" stroke-width="2"/>
+            <text x="940" y="350" text-anchor="middle" font-size="10" fill="var(--label-color)" font-weight="600">USB-C</text>
+            <text x="940" y="366" text-anchor="middle" font-size="8" fill="var(--annotation-color)">(On-Board Port)</text>
+            <text x="940" y="382" text-anchor="middle" font-size="8" fill="var(--annotation-color)">J1</text>
+            <text x="940" y="408" text-anchor="middle" font-size="7" fill="var(--signal-color)" font-weight="500">♻️ Reuses original</text>
+            <text x="940" y="418" text-anchor="middle" font-size="7" fill="var(--signal-color)" font-weight="500">K120 cable hole</text>
+
+            <!-- USB-C functions label -->
+            <text x="1020" y="338" font-size="8" fill="var(--annotation-color)">1. Wired HID (BIOS/Linux)</text>
+            <text x="1020" y="352" font-size="8" fill="var(--annotation-color)">2. Charging (5V → TP4056)</text>
+            <text x="1020" y="366" font-size="8" fill="var(--annotation-color)">3. Firmware upload</text>
+
+            <!-- Right side: BLE antenna -->
+            <text x="900" y="270" font-size="9" fill="var(--annotation-color)" font-weight="500">⟨⟨⟨ BLE 5.0 ANTENNA</text>
+            <text x="900" y="284" font-size="8" fill="var(--annotation-color)">(integrated PCB trace)</text>
+            <line x1="890" y1="260" x2="890" y2="290" stroke="var(--signal-color)" stroke-width="1.5" stroke-dasharray="3,3"/>
+            <line x1="880" y1="250" x2="890" y2="232" stroke="var(--signal-color)" stroke-width="2"/>
+            <line x1="900" y1="250" x2="890" y2="232" stroke="var(--signal-color)" stroke-width="2"/>
+            <line x1="890" y1="232" x2="890" y2="250" stroke="var(--signal-color)" stroke-width="2"/>
+
+            <!-- ================================================================ -->
+            <!-- CHARGING PATH (Dashed orange — only active when USB plugged in)  -->
+            <!-- ================================================================ -->
+            <!-- ESP32-S3 5V pin taps to TP4056 -->
+            <line x1="540" y1="340" x2="540" y2="480" stroke="var(--charge-color)" stroke-width="2" stroke-dasharray="8,4"/>
+            <line x1="540" y1="480" x2="380" y2="480" stroke="var(--charge-color)" stroke-width="2" stroke-dasharray="8,4" marker-end="url(#arrow-orange)"/>
+            <use href="#junction" x="540" y="340"/>
+            <text x="470" y="474" text-anchor="middle" font-size="8" fill="var(--charge-color)" font-weight="500">CHARGE PATH (5V from USB-C)</text>
+            <text x="470" y="486" text-anchor="middle" font-size="7" fill="var(--charge-color)">Only active when USB-C plugged in</text>
+
+            <!-- ================================================================ -->
+            <!-- U2: TP4056 Battery Charger                                       -->
+            <!-- ================================================================ -->
+            <rect x="200" y="430" width="180" height="130" rx="4" fill="var(--module-fill)" stroke="var(--charge-color)" stroke-width="2.5"/>
+            <rect x="200" y="430" width="180" height="28" rx="4" fill="var(--charge-color)"/>
+            <rect x="200" y="454" width="180" height="4" fill="var(--charge-color)"/>
+            <text x="290" y="451" text-anchor="middle" font-size="11" fill="white" font-weight="600">U2: TP4056 + PROT.</text>
+
+            <!-- TP4056 pins -->
+            <!-- IN+ (right) — from charge path -->
+            <line x1="380" y1="480" x2="380" y2="480" stroke="var(--charge-color)" stroke-width="2"/>
+            <text x="350" y="484" font-size="10" fill="var(--pin-color)" font-weight="500" text-anchor="end">IN+</text>
+
+            <!-- IN- (bottom) -->
+            <line x1="260" y1="560" x2="260" y2="800" stroke="var(--gnd-color)" stroke-width="2"/>
+            <text x="215" y="548" font-size="10" fill="var(--pin-color)" font-weight="500">IN−</text>
+
+            <!-- BAT+ (left) — connects to battery positive line -->
+            <line x1="200" y1="480" x2="170" y2="480" stroke="var(--power-color)" stroke-width="2"/>
+            <line x1="170" y1="480" x2="170" y2="295" stroke="var(--power-color)" stroke-width="2"/>
+            <line x1="170" y1="295" x2="220" y2="295" stroke="var(--power-color)" stroke-width="2"/>
+            <text x="215" y="484" font-size="10" fill="var(--pin-color)" font-weight="500">BAT+</text>
+
+            <!-- BAT- (left) -->
+            <text x="215" y="516" font-size="10" fill="var(--pin-color)" font-weight="500">BAT−</text>
+
+            <!-- Status LEDs label -->
+            <text x="290" y="548" text-anchor="middle" font-size="8" fill="var(--annotation-color)">CHRG (Blue) | FULL (Green)</text>
+
+            <!-- ================================================================ -->
+            <!-- K120 USB Connector (Internal)                                    -->
+            <!-- ================================================================ -->
+            <rect x="1100" y="200" width="220" height="210" rx="4" fill="var(--module-fill)" stroke="var(--component-stroke)" stroke-width="2.5"/>
+            <rect x="1100" y="200" width="220" height="28" rx="4" fill="var(--data-color)"/>
+            <rect x="1100" y="224" width="220" height="4" fill="var(--data-color)"/>
+            <text x="1210" y="221" text-anchor="middle" font-size="11" fill="white" font-weight="600">K120 INTERNAL USB</text>
+
+            <!-- K120 pins -->
+            <!-- VCC (5V) -->
+            <line x1="1060" y1="260" x2="1100" y2="260" stroke="var(--power-color)" stroke-width="2"/>
+            <text x="1112" y="264" font-size="10" fill="var(--pin-color)" font-weight="500">VCC (5V)</text>
+            <rect x="1240" y="252" width="50" height="16" rx="3" fill="#ef233c" opacity="0.15" stroke="#ef233c" stroke-width="1"/>
+            <text x="1265" y="264" text-anchor="middle" font-size="8" fill="#ef233c" font-weight="600">RED</text>
+
+            <!-- D- -->
+            <line x1="1060" y1="300" x2="1100" y2="300" stroke="var(--data-color)" stroke-width="2"/>
+            <text x="1112" y="304" font-size="10" fill="var(--pin-color)" font-weight="500">D− (Data −)</text>
+            <rect x="1240" y="292" width="50" height="16" rx="3" fill="#ffffff" stroke="#999" stroke-width="1"/>
+            <text x="1265" y="304" text-anchor="middle" font-size="8" fill="#666" font-weight="600">WHITE</text>
+
+            <!-- D+ -->
+            <line x1="1060" y1="340" x2="1100" y2="340" stroke="var(--data-color)" stroke-width="2"/>
+            <text x="1112" y="344" font-size="10" fill="var(--pin-color)" font-weight="500">D+ (Data +)</text>
+            <rect x="1240" y="332" width="50" height="16" rx="3" fill="#38b000" opacity="0.2" stroke="#38b000" stroke-width="1"/>
+            <text x="1265" y="344" text-anchor="middle" font-size="8" fill="#38b000" font-weight="600">GREEN</text>
+
+            <!-- GND -->
+            <line x1="1060" y1="380" x2="1100" y2="380" stroke="var(--gnd-color)" stroke-width="2"/>
+            <text x="1112" y="384" font-size="10" fill="var(--pin-color)" font-weight="500">GND</text>
+            <rect x="1240" y="372" width="50" height="16" rx="3" fill="#333" opacity="0.15" stroke="#333" stroke-width="1"/>
+            <text x="1265" y="384" text-anchor="middle" font-size="8" fill="#333" font-weight="600">BLACK</text>
+
+            <!-- ================================================================ -->
+            <!-- SW2: Scroll Lock Key (Wake Source)                               -->
+            <!-- ================================================================ -->
+            <rect x="1120" y="500" width="180" height="90" rx="4" fill="var(--module-fill)" stroke="var(--signal-color)" stroke-width="2" stroke-dasharray="6,3"/>
+            <text x="1210" y="530" text-anchor="middle" font-size="10" fill="var(--signal-color)" font-weight="600">SCROLL LOCK KEY</text>
+            <text x="1210" y="546" text-anchor="middle" font-size="9" fill="var(--annotation-color)">K120 membrane matrix</text>
+            <text x="1210" y="562" text-anchor="middle" font-size="8" fill="var(--annotation-color)">1 wire soldered to pad</text>
+            <text x="1210" y="580" text-anchor="middle" font-size="9" fill="var(--label-color)" font-weight="600">SW2</text>
+
+            <!-- Scroll Lock wire -->
+            <line x1="1120" y1="544" x2="580" y2="544" stroke="var(--signal-color)" stroke-width="2" stroke-dasharray="6,3"/>
+            <line x1="580" y1="544" x2="580" y2="440" stroke="var(--signal-color)" stroke-width="2" stroke-dasharray="6,3"/>
+            <text x="850" y="538" font-size="8" fill="var(--signal-color)" font-weight="500">WAKE_INT (to GPIO 4) — Deep Sleep wake</text>
+
+            <!-- ================================================================ -->
+            <!-- WIRING: 5V Power Rail → K120 VCC                                -->
+            <!-- ================================================================ -->
+            <!-- Already drawn: 5V rail at y=100 to x=1040 -->
+            <line x1="1040" y1="250" x2="1040" y2="260" stroke="var(--power-color)" stroke-width="2"/>
+            <line x1="1040" y1="260" x2="1060" y2="260" stroke="var(--power-color)" stroke-width="2"/>
+
+            <!-- ================================================================ -->
+            <!-- WIRING: USB Data Lines                                           -->
+            <!-- ================================================================ -->
+            <!-- K120 D- → ESP32 GPIO 19 -->
+            <line x1="1060" y1="300" x2="1020" y2="300" stroke="var(--data-color)" stroke-width="2"/>
+            <line x1="1020" y1="300" x2="1020" y2="140" stroke="var(--data-color)" stroke-width="2"/>
+            <line x1="1020" y1="140" x2="560" y2="140" stroke="var(--data-color)" stroke-width="2"/>
+            <line x1="560" y1="140" x2="560" y2="280" stroke="var(--data-color)" stroke-width="2"/>
+            <line x1="560" y1="280" x2="580" y2="280" stroke="var(--data-color)" stroke-width="2"/>
+            <text x="790" y="134" text-anchor="middle" font-size="9" fill="var(--data-color)" font-weight="500">USB_D− (White Wire)</text>
+
+            <!-- K120 D+ → ESP32 GPIO 20 -->
+            <line x1="1060" y1="340" x2="1000" y2="340" stroke="var(--data-color)" stroke-width="2"/>
+            <line x1="1000" y1="340" x2="1000" y2="160" stroke="var(--data-color)" stroke-width="2"/>
+            <line x1="1000" y1="160" x2="560" y2="160" stroke="var(--data-color)" stroke-width="2"/>
+            <line x1="560" y1="160" x2="560" y2="310" stroke="var(--data-color)" stroke-width="2"/>
+            <line x1="560" y1="310" x2="580" y2="310" stroke="var(--data-color)" stroke-width="2"/>
+            <text x="790" y="174" text-anchor="middle" font-size="9" fill="var(--data-color)" font-weight="500">USB_D+ (Green Wire)</text>
+
+            <!-- ================================================================ -->
+            <!-- GND BUS                                                          -->
+            <!-- ================================================================ -->
+            <line x1="60" y1="800" x2="1060" y2="800" stroke="var(--gnd-color)" stroke-width="3"/>
+            <text x="560" y="794" text-anchor="middle" font-size="10" fill="var(--gnd-color)" font-weight="600">GND BUS</text>
+
+            <use href="#gnd-sym" x="200" y="800"/>
+            <use href="#gnd-sym" x="500" y="800"/>
+            <use href="#gnd-sym" x="800" y="800"/>
+
+            <!-- Battery GND to bus -->
+            <use href="#junction" x="100" y="800"/>
+
+            <!-- TP4056 GND to bus -->
+            <use href="#junction" x="260" y="800"/>
+
+            <!-- ESP32 GND to bus -->
+            <line x1="580" y1="380" x2="560" y2="380" stroke="var(--gnd-color)" stroke-width="2"/>
+            <line x1="560" y1="380" x2="560" y2="800" stroke="var(--gnd-color)" stroke-width="2"/>
+            <use href="#junction" x="560" y="800"/>
+
+            <!-- K120 GND to bus -->
+            <line x1="1060" y1="380" x2="1040" y2="380" stroke="var(--gnd-color)" stroke-width="2"/>
+            <line x1="1040" y1="380" x2="1040" y2="800" stroke="var(--gnd-color)" stroke-width="2"/>
+            <use href="#junction" x="1040" y="800"/>
+
+            <!-- ================================================================ -->
+            <!-- POWER FLOW ANNOTATIONS                                           -->
+            <!-- ================================================================ -->
+            <!-- Arrow: Battery → MT3608 -->
+            <text x="400" y="230" font-size="8" fill="var(--power-color)" font-weight="600" transform="rotate(-90, 400, 230)">ALWAYS ON</text>
+
+            <!-- ================================================================ -->
+            <!-- NOTES BOX                                                        -->
+            <!-- ================================================================ -->
+            <rect x="620" y="620" width="440" height="180" rx="4" fill="white" stroke="var(--component-stroke)" stroke-width="1.5"/>
+            <text x="632" y="642" font-size="10" fill="var(--label-color)" font-weight="600">NOTES:</text>
+            <text x="632" y="660" font-size="9" fill="var(--annotation-color)">1. UPS design: Battery → MT3608 → 5V powers everything. Always.</text>
+            <text x="632" y="676" font-size="9" fill="var(--annotation-color)">2. USB-C only charges battery via TP4056 (dashed orange path).</text>
+            <text x="632" y="692" font-size="9" fill="var(--annotation-color)">3. Plug/unplug USB-C = zero power glitch. No reboot.</text>
+            <text x="632" y="708" font-size="9" fill="var(--annotation-color)">4. ESP32-S3 detects USB data lines only (wired vs BLE mode).</text>
+            <text x="632" y="724" font-size="9" fill="var(--annotation-color)">5. SW1 (kill switch) fully disconnects battery for hard reset.</text>
+            <text x="632" y="740" font-size="9" fill="var(--annotation-color)">6. SW2 (Scroll Lock) wired from K120 membrane to GPIO 4.</text>
+            <text x="632" y="756" font-size="9" fill="var(--annotation-color)">7. 3.3V rail is internal to ESP32-S3 LDO — fully isolated.</text>
+            <text x="632" y="772" font-size="9" fill="var(--annotation-color)">8. Antenna must face away from metal inside K120 casing.</text>
+            <text x="632" y="788" font-size="9" fill="var(--annotation-color)">9. Deep sleep: ~0.02 mA. Active: ~100 mA. Standby: months.</text>
+
+            <!-- ================================================================ -->
+            <!-- CASING MODIFICATIONS BOX                                         -->
+            <!-- ================================================================ -->
+            <rect x="60" y="620" width="260" height="80" rx="4" fill="#e8f5e9" stroke="var(--signal-color)" stroke-width="1.5"/>
+            <text x="190" y="640" text-anchor="middle" font-size="10" fill="var(--signal-color)" font-weight="600">CASING MODIFICATIONS</text>
+            <text x="75" y="660" font-size="9" fill="var(--label-color)">♻️ USB-C: original cable hole (no drill)</text>
+            <text x="75" y="678" font-size="9" fill="var(--label-color)">🆕 Kill switch: 1 tiny hole (underside)</text>
+            <text x="75" y="694" font-size="9" fill="var(--signal-color)" font-weight="500">Looks 100% stock from outside</text>
+
+            <!-- ================================================================ -->
+            <!-- POWER RAILS SUMMARY BOX                                          -->
+            <!-- ================================================================ -->
+            <rect x="60" y="710" width="260" height="80" rx="4" fill="#fff3e0" stroke="var(--charge-color)" stroke-width="1.5"/>
+            <text x="190" y="730" text-anchor="middle" font-size="10" fill="var(--charge-color)" font-weight="600">POWER RAILS (ISOLATED)</text>
+            <text x="75" y="750" font-size="9" fill="var(--power-color)">■ 5V — MT3608 output → K120 + ESP32-S3</text>
+            <text x="75" y="766" font-size="9" fill="var(--charge-color)">■ 3.7V — LiPo battery (via kill switch)</text>
+            <text x="75" y="782" font-size="9" fill="var(--signal-color)">■ 3.3V — ESP32-S3 internal LDO (isolated)</text>
+
+            <!-- ================================================================ -->
+            <!-- BORDER                                                           -->
+            <!-- ================================================================ -->
+            <rect x="5" y="5" width="1390" height="890" fill="none" stroke="var(--component-stroke)" stroke-width="3" rx="2"/>
+
+            <!-- Title block bottom right -->
+            <rect x="1020" y="850" width="370" height="40" fill="white" stroke="var(--component-stroke)" stroke-width="2"/>
+            <text x="1035" y="874" font-size="9" fill="var(--label-color)" font-weight="600">WIRELESS K120</text>
+            <line x1="1140" y1="850" x2="1140" y2="890" stroke="var(--component-stroke)" stroke-width="1"/>
+            <text x="1155" y="874" font-size="9" fill="var(--annotation-color)">REV 2.0</text>
+            <line x1="1210" y1="850" x2="1210" y2="890" stroke="var(--component-stroke)" stroke-width="1"/>
+            <text x="1225" y="874" font-size="9" fill="var(--annotation-color)">JUNE 2026</text>
+            <line x1="1310" y1="850" x2="1310" y2="890" stroke="var(--component-stroke)" stroke-width="1"/>
+            <text x="1325" y="874" font-size="9" fill="var(--annotation-color)">1 / 1</text>
+        </svg>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend-bar">
+        <div class="legend-item">
+            <div class="legend-line" style="background: var(--power-color);"></div>
+            <span>5V Power (MT3608 output — always on)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-line-dashed" style="border-color: var(--charge-color);"></div>
+            <span>Charging Path (USB-C → TP4056 — when plugged in)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-line" style="background: var(--gnd-color);"></div>
+            <span>Ground (GND)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-line" style="background: var(--data-color);"></div>
+            <span>USB Data (D− / D+)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-line-dashed" style="border-color: var(--signal-color);"></div>
+            <span>Wake Signal (GPIO 4)</span>
+        </div>
+    </div>
+
+    <!-- Title Block -->
+    <dl class="title-block">
+        <dt>Project</dt>
+        <dd>Wireless K120 Bluetooth Keyboard Mod</dd>
+        <dt>Architecture</dt>
+        <dd>UPS-style (battery always powers, USB only charges)</dd>
+        <dt>MCU</dt>
+        <dd>ESP32-S3 Zero (Espressif)</dd>
+        <dt>Battery</dt>
+        <dd>LiPo 3.7V 500mAh (801350)</dd>
+        <dt>Charger</dt>
+        <dd>TP4056 USB-C w/ Protection</dd>
+        <dt>Boost</dt>
+        <dd>MT3608 DC-DC 3.7V → 5V (always on)</dd>
+        <dt>Wireless</dt>
+        <dd>BLE 5.0 HID Keyboard</dd>
+        <dt>Host Card</dt>
+        <dd>Intel Wi-Fi 6E AX210 (BT 5.3)</dd>
+        <dt>Casing Mods</dt>
+        <dd>0 new visible holes (1 hidden underside for kill switch)</dd>
+        <dt>Drawn by</dt>
+        <dd>Antigravity AI + Human</dd>
+    </dl>
+</div>
+
+<!-- Zoom Controls -->
+<div class="zoom-controls">
+    <button class="zoom-btn" onclick="zoom(1.2)" title="Zoom In">+</button>
+    <button class="zoom-btn" onclick="zoom(0.8)" title="Zoom Out">−</button>
+    <button class="zoom-btn" onclick="resetZoom()" title="Reset" style="font-size: 1rem;">⟳</button>
+</div>
+
+<script>
+    let currentScale = 1;
+    const svg = document.getElementById('schematic');
+    const baseWidth = 1400;
+    const baseHeight = 900;
+
+    function zoom(factor) {
+        currentScale *= factor;
+        currentScale = Math.max(0.4, Math.min(3, currentScale));
+        svg.setAttribute('width', baseWidth * currentScale);
+        svg.setAttribute('height', baseHeight * currentScale);
+    }
+
+    function resetZoom() {
+        currentScale = 1;
+        svg.setAttribute('width', baseWidth);
+        svg.setAttribute('height', baseHeight);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === '+' || e.key === '=') zoom(1.2);
+        if (e.key === '-') zoom(0.8);
+        if (e.key === '0') resetZoom();
+    });
+</script>
+
+</body>
+</html>
