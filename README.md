@@ -149,3 +149,6 @@ Enable **USB Legacy Support** in your motherboard settings (e.g. Gigabyte B560M 
 *   Detailed technical explainer: [keyboard_mod_explainer.html](keyboard_mod_explainer.html)
 *   Full hardware design notes: [DESIGN.md](DESIGN.md)
 *   Visual interactive schematic: [schematic.html](schematic.html)
+*   Arduino IDE Setup & Tools: [docs/ARDUINO_SETUP.md](docs/ARDUINO_SETUP.md)
+*   Dual-Mode Implementation Details: [docs/DUAL_MODE_HANDOVER.md](docs/DUAL_MODE_HANDOVER.md)
+*   Example Dual-Mode Sketch: [examples/dual_mode_test/dual_mode_test.ino](examples/dual_mode_test/dual_mode_test.ino)

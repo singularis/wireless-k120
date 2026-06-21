@@ -175,15 +175,26 @@ The firmware auto-detects which mode to use on boot:
 | USB-C cable unplugged | **Wireless** | Bluetooth Low Energy HID |
 
 ```cpp
+// Prevent macro conflicts
+#define KeyReport BleKeyReport
+#define MediaKeyReport BleMediaKeyReport
+#include <BleKeyboard.h>
+#undef KeyReport
+#undef MediaKeyReport
+#include "USB.h"
+#include "USBHIDKeyboard.h"
+
 void setup() {
-    if (USB.isConnected()) {
-        // Wired mode — USB HID keyboard device
-        USB.begin();
-        usbKeyboard.begin();
-    } else {
-        // Wireless mode — BLE keyboard
-        bleKeyboard.begin();
-    }
+    // Initialize both modes simultaneously
+    USB.begin();
+    usbKeyboard.begin();
+    bleKeyboard.begin();
+}
+
+void loop() {
+    // Broadcast to both pipelines
+    usbKeyboard.print("Dual-Mode Works!");
+    if (bleKeyboard.isConnected()) bleKeyboard.print("Dual-Mode Works!");
 }
 ```
 
