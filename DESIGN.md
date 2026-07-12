@@ -1,8 +1,8 @@
 # Wireless K120 — Design Document
 
-> **Project:** Convert a wired Logitech K120 USB keyboard into a wireless Bluetooth Low Energy keyboard with deep sleep, LED sync, and dual-mode (wired + wireless) operation.
+> **Project:** Convert a wired Logitech K120 USB keyboard into a wireless Bluetooth Low Energy keyboard with LED sync, dual-mode (wired + wireless) operation, and always-on power (battery kill switch).
 >
-> **Status:** Awaiting parts from AliExpress. Design finalised.
+> **Status:** Firmware in progress. Always-on power — no deep sleep / Scroll Lock wake.
 
 ---
 
@@ -36,7 +36,7 @@ All parts ordered from AliExpress.
 | 4 | LiPo Battery 801350 3.7V 500mAh | 1 | £5.05 | Power source |
 | 5 | Solder Wire Sn99.3Cu0.7 0.8mm 50g | 1 | £4.89 | Lead-free solder (hand soldering) |
 | 6 | USB Logic Analyzer 24MHz 8CH | 1 | £4.19 | Protocol debugging (PulseView/sigrok) |
-| 7 | Slide switch (SPST, mini) | 1 | ~£0.50 | Hidden battery kill switch (hard reset) |
+| 7 | Slide switch (SPST, mini) | 1 | ~£0.50 | Battery power on/off (primary power control) |
 | | **Total** | | **~£25** | |
 
 ### Already Owned
@@ -85,11 +85,8 @@ All parts ordered from AliExpress.
 │            │ TP4056  │←─┼── 5V (from ESP32-S3 5V pin,           │
 │            │ Charger │  │      only when USB-C plugged in)       │
 │            └─────────┘  │                 │                      │
-│                         │                 │                      │
-│  ┌──────────────┐       │                 │                      │
-│  │ Scroll Lock  │── wire to GPIO 4 ── Deep Sleep wake source    │
-│  │ key matrix   │                                                │
-│  └──────────────┘                                                │
+│                                                                   │
+│  Power on/off = SW1 kill switch (disconnects battery)            │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -135,7 +132,7 @@ Any charger works safely:
 | Modification | Location | Type |
 |-------------|----------|------|
 | USB-C port access | Back panel (original cable hole) | ♻️ **Reused** — no drilling |
-| Kill switch | Underside (hidden, pen-tip accessible) | 🆕 **One small hole** |
+| Power / kill switch | Underside (hidden, pen-tip accessible) | 🆕 **One small hole** |
 
 **From the outside, the keyboard looks 100% stock.**
 
@@ -147,10 +144,11 @@ Any charger works safely:
 |-------------------|-------------|----------|
 | GPIO 19 | K120 internal USB white wire | USB Host D- (native PHY) |
 | GPIO 20 | K120 internal USB green wire | USB Host D+ (native PHY) |
-| GPIO 4 | Scroll Lock key matrix pad | Deep Sleep wake interrupt |
 | 5V pin | TP4056 IN+ | Battery charging from USB-C |
 | GND | TP4056 IN-, K120 black wire | Common ground |
 | USB-C port | External cable | Wired HID / Charging / Programming |
+
+> **Note:** GPIO 4 / Scroll Lock wake wiring is **not used**. The board stays powered until the battery kill switch is turned off.
 
 ### K120 Internal Cable Colors (Standard USB)
 
@@ -212,23 +210,12 @@ void loop() {
 | Protocol | BLE HID (standard, no drivers required) |
 | Compatible with | Intel AX210 (BT 5.3) ✅, any standard BT adapter ✅ |
 
-### 5.3 Scroll Lock Key — Wake + Suppression
+### 5.3 Scroll Lock Key
 
-Scroll Lock is repurposed as the **keyboard power key**:
+Scroll Lock is a **normal key** — forwarded to the host like every other key.
+There is no firmware wake path and no scan-code suppression.
 
-| State | Scroll Lock Behaviour |
-|-------|----------------------|
-| **Deep sleep** | Physical press on GPIO 4 wakes the ESP32-S3 |
-| **Active (any mode)** | Scan code is **silently dropped** — never forwarded to Windows |
-| **All modes** | Scroll Lock key is fully suppressed at firmware level |
-
-```cpp
-// In the USB Host report processing loop:
-if (scanCode == HID_KEY_SCROLL_LOCK) {
-    // Swallow silently — never forward to BLE or USB HID output
-    return;
-}
-```
+Power on/off is handled only by the **hardware battery kill switch** (see §6.6).
 
 ### 5.4 LED Sync (Caps Lock + Num Lock)
 
@@ -255,15 +242,18 @@ Visual feedback using the K120's Caps Lock and Num Lock LEDs:
 
 | Event | LED Sequence | Meaning |
 |-------|-------------|---------|
-| **Waking up** | Num → Caps → both OFF | "I'm alive" |
+| **Boot / power on** | Num → Caps → both OFF | "I'm alive" |
 | **BLE connecting** | Alternate blink (Num/Caps, 500ms) | "Searching for PC..." |
 | **BLE connected** | Both flash together × 2, then restore real state | "Ready!" |
-| **Going to sleep** | Both slow blink × 3 → OFF | "Goodnight" |
 
 ### 5.6 Power Management
 
+The firmware is **always-on**. There is no deep sleep and no software power-off.
+Turn the keyboard off with the **battery kill switch** (disconnects LiPo).
+
 #### Idle LED Timeout (30 minutes)
-After 30 minutes of no keypresses, all LEDs are turned off to save power:
+After 30 minutes of no keypresses, keyboard LEDs are turned off to save a little
+power. The ESP32-S3 and BLE stack keep running.
 
 ```cpp
 #define LED_IDLE_TIMEOUT_MS  (30UL * 60UL * 1000UL)
@@ -277,21 +267,12 @@ if (!ledForcedOff && (now - lastKeypressAt > LED_IDLE_TIMEOUT_MS)) {
 On first keypress after idle, the real LED state is instantly restored from the
 cached `lastLedState` value.
 
-#### Deep Sleep (30 minutes idle)
-After 30 minutes of no keypresses, the ESP32-S3 enters deep sleep:
-
-```cpp
-esp_sleep_enable_ext0_wakeup(GPIO_NUM_4, 0);  // Wake on Scroll Lock press
-esp_deep_sleep_start();
-```
-
 | Parameter | Value |
 |-----------|-------|
-| Idle timeout | 30 minutes |
-| Deep sleep current | ~0.02 mA |
-| Standby battery life (500mAh) | **Months** |
-| Wake source | Scroll Lock key (GPIO 4) |
-| Reconnect time after wake | ~3 seconds |
+| Power model | Always-on while kill switch is ON |
+| Software sleep | None |
+| Idle LED timeout | 30 minutes (LEDs only) |
+| Power off | Hardware battery kill switch |
 
 ### 5.7 Libraries
 
@@ -314,10 +295,9 @@ Place components to keep the ESP32-S3 antenna area clear of any metal.
 - ABS plastic casing is RF-transparent at 2.4 GHz.
 - **Do NOT place** the antenna area against any metal support plates inside the keyboard.
 
-### 6.3 Scroll Lock Wake Wire
-- Open the K120 and identify the Scroll Lock key's contact pad on the membrane PCB.
-- Solder **one thin wire** from the Scroll Lock matrix contact to GPIO 4 on the ESP32-S3.
-- This wire is the deep sleep wake interrupt source.
+### 6.3 Scroll Lock Wake Wire — Not Used
+- No GPIO 4 / Scroll Lock matrix wire is required.
+- Scroll Lock works as a normal key over USB Host → BLE.
 
 ### 6.4 Battery Safety
 - Solder LiPo wires directly to TP4056 BAT+/BAT- pads (no JST connector needed).
@@ -328,13 +308,13 @@ Place components to keep the ESP32-S3 antenna area clear of any metal.
 - Route the ESP32-S3 Zero's USB-C port through the **original K120 cable hole** — no new drilling needed.
 - This is the only external port on the finished keyboard.
 
-### 6.6 Hidden Battery Kill Switch (Hard Reset)
+### 6.6 Hidden Battery Kill Switch (Primary Power Control)
 - Wire a **mini SPST slide switch** in series on the **battery positive line** between the LiPo BAT+ and the TP4056 BAT+ pad.
 - Mount in a discreet but accessible location (e.g., behind a sticker on the underside, or inside the battery compartment reachable with a pen tip).
-- **Switch OFF** = battery fully disconnected → complete power kill → hard reset.
-- **Switch ON** = normal operation.
-- Use case: firmware crash, BLE pairing stuck, or any unrecoverable state where Scroll Lock wake does not respond.
-- This is a **last resort** — the firmware should handle all normal recovery via deep sleep wake and BLE reconnection.
+- **Switch OFF** = battery fully disconnected → keyboard powered off.
+- **Switch ON** = normal always-on operation (BLE advertising / connected).
+- This is the **only** power on/off control — there is no firmware deep sleep or Scroll Lock wake.
+- Also useful as a hard reset if firmware or BLE pairing gets stuck.
 
 ---
 
@@ -393,14 +373,12 @@ Disable Bluetooth sleep to prevent 2-second reconnect lag:
 ## 10. Usage Scenarios
 
 ### 10.1 Gaming Session (Weekly)
-1. Sit down at PC.
-2. Press **Scroll Lock** on the K120.
-3. LED wake sequence plays (Num → Caps blink).
-4. BLE connects to Windows in ~3 seconds.
-5. LED connected sequence plays (both flash × 2).
-6. Game. 🎮
-7. Walk away.
-8. After 30 minutes idle → deep sleep automatically.
+1. Flip the **battery kill switch ON** (if it was off).
+2. Boot LED sequence plays (Num → Caps).
+3. BLE connects to Windows (or reconnects if already paired).
+4. LED connected sequence plays (both flash × 2).
+5. Game. 🎮
+6. When finished, flip the **kill switch OFF** to disconnect the battery — or leave it on (always-on). After 30 minutes idle, LEDs turn off but the board stays powered.
 
 ### 10.2 BIOS / Linux Server Access (Rare)
 1. Plug USB-C cable from K120 into PC rear USB port.
@@ -414,14 +392,18 @@ Disable Bluetooth sleep to prevent 2-second reconnect lag:
 3. Blue LED on TP4056 = charging, Green LED = full.
 4. Unplug.
 
+### 10.4 Power Off
+1. Flip the underside **battery kill switch OFF**.
+2. Battery is fully disconnected — ESP32-S3 and K120 are powered down.
+
 ---
 
 ## 11. Known Limitations & Accepted Trade-offs
 
 | Limitation | Status | Notes |
 |-----------|--------|-------|
-| Scroll Lock key disabled | ✅ Accepted | Repurposed as wake key, never used otherwise |
-| ~3 second reconnect after deep sleep | ✅ Accepted | Only happens at start of gaming session |
+| Always-on while switch is ON | ✅ Accepted | No deep sleep — use kill switch to power off and save battery |
+| Higher idle battery use vs deep sleep | ✅ Accepted | Simpler UX; 500mAh still fine for light weekly use if switched off after sessions |
 | BLE does not work in BIOS | ✅ Solved | Wired USB-C mode auto-detected |
 | Logitech Unifying/Bolt receivers incompatible | ✅ Accepted | Proprietary protocols — BLE is superior |
 | Lead-free solder (not 63/37) | ✅ Accepted | Ordered Sn99.3Cu0.7 — works fine for this project |
@@ -434,3 +416,4 @@ Disable Bluetooth sleep to prevent 2-second reconnect lag:
 - [ ] Multi-device pairing (switch between Windows PC and MacBook via key combo)
 - [ ] Custom key remapping (e.g., remap Scroll Lock LED to show BLE connection status)
 - [ ] OTA firmware updates over BLE (avoid opening the casing)
+- [ ] Optional deep sleep / wake (revisit only if idle battery life becomes a problem)
